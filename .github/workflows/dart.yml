@@ -2,9 +2,9 @@ name: Flutter Workflow
 
 on:
   push:
-    branches: ["main", "staging"]
+    branches: ["main", "staging", "actions"]
   pull_request:
-    branches: ["main", "staging"]
+    branches: ["main", "staging", "actions"]
 
 jobs:
   build:
