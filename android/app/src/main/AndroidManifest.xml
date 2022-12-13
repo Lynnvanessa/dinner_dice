@@ -1,7 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.dinner_dice">
+    package="com.example.diner_dice">
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
    <application
-        android:label="dinner_dice"
+        android:label="diner_dice"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
