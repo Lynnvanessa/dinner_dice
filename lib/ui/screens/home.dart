@@ -1,6 +1,8 @@
+import 'package:diner_dice/utils/consts.dart';
 import 'package:diner_dice/utils/functions.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_place/google_place.dart';
 import 'package:location/location.dart' as loc;
 
 class HomeScreen extends StatefulWidget {
@@ -56,13 +58,40 @@ class _HomeScreenState extends State<HomeScreen> {
     print(position.toJson());
   }
 
+  Future<void> getNearbyRestaurants() async {
+    await _determinePosition()
+        .catchError(
+      (stackTrrace) {},
+    )
+        .then((position) async {
+      final googlePlace = GooglePlace(MAPS_API_KEY);
+      final result = await googlePlace.search.getNearBySearch(
+        Location(
+          lat: position.latitude,
+          lng: position.longitude,
+        ),
+        1500,
+        type: "restaurant",
+      );
+      if (result == null) {
+        showToast("Failed to process the request, please try again");
+        return;
+      }
+      if (result.results == null || result.results?.isEmpty == true) {
+        showToast("No restaurants found");
+        return;
+      }
+      //select random restaurant
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
         child: InkWell(
-          onTap: determinePosition,
-          child: const Text("Get Current Location"),
+          onTap: getNearbyRestaurants,
+          child: const Text("Roll Dice"),
         ),
       ),
     );

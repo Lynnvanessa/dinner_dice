@@ -37,6 +37,7 @@ dependencies:
   geolocator: ^9.0.1
   location: ^4.4.0
   fluttertoast: ^8.0.9
+  google_place: ^0.4.7
 
 dev_dependencies:
   flutter_test:
