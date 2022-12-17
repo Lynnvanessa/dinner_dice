@@ -1,4 +1,5 @@
 import 'package:diner_dice/data/providers/home_provider.dart';
+import 'package:diner_dice/ui/theme/colors.dart';
 import 'package:diner_dice/ui/widgets/restaurant_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -35,6 +36,9 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Nearby restaurants"),
+        backgroundColor: AppColors.surface,
+        foregroundColor: AppColors.onSurface,
+        elevation: 1,
       ),
       body: Consumer<HomeProvider>(
         builder: (context, provider, child) {
@@ -56,12 +60,6 @@ class _NearbyRestaurantsScreenState extends State<NearbyRestaurantsScreen> {
               return RestaurantPreview(provider.restaurants[index]);
             },
           );
-          // return Column(
-          //   children: [
-          //     for (final restaurant in provider.restaurants)
-          //       RestaurantPreview(restaurant)
-          //   ],
-          // );
         },
       ),
     );

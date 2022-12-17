@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:diner_dice/ui/theme/colors.dart';
 import 'package:diner_dice/ui/theme/typography.dart';
 import 'package:diner_dice/ui/widgets/rectangular_border.dart';
 import 'package:flutter/material.dart';
@@ -7,8 +8,23 @@ import 'package:google_place/google_place.dart';
 import 'package:maps_launcher/maps_launcher.dart';
 
 class RestaurantPreview extends StatelessWidget {
-  const RestaurantPreview(this.restaurant, {Key? key}) : super(key: key);
+  const RestaurantPreview(
+    this.restaurant, {
+    Key? key,
+    this.isDiceSelected = false,
+  }) : super(key: key);
   final SearchResult restaurant;
+
+  /// [isDiceSelected] whether it has been selected by the dice roll
+  final bool isDiceSelected;
+
+  void _try() {
+    MapsLauncher.launchCoordinates(
+      restaurant.geometry?.location?.lat ?? 0,
+      restaurant.geometry?.location?.lng ?? 0,
+      restaurant.name,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +32,10 @@ class RestaurantPreview extends StatelessWidget {
       margin: const EdgeInsets.all(10),
       padding: const EdgeInsets.all(8),
       width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: isDiceSelected ? AppColors.surfaceVariant : null,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.max,
@@ -74,18 +94,21 @@ class RestaurantPreview extends StatelessWidget {
                           ),
                           Container(
                             margin: const EdgeInsets.only(left: 8),
-                            child: OutlinedButton(
-                              onPressed: () {
-                                MapsLauncher.launchCoordinates(
-                                  restaurant.geometry?.location?.lat ?? 0,
-                                  restaurant.geometry?.location?.lng ?? 0,
-                                );
-                              },
-                              child: const Text(
-                                "Try it!",
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
+                            child: isDiceSelected
+                                ? ElevatedButton(
+                                    onPressed: _try,
+                                    child: const Text(
+                                      "Try it!",
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  )
+                                : OutlinedButton(
+                                    onPressed: _try,
+                                    child: const Text(
+                                      "Try it!",
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
                           )
                         ],
                       )

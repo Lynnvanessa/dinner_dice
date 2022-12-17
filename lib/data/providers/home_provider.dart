@@ -23,7 +23,6 @@ class HomeProvider extends ChangeNotifier {
   }
 
   Future<void> getMoreRestaurants() async {
-    print("load more called");
     if (!hasNextPage) {
       return;
     }
