@@ -1,10 +1,14 @@
 import 'dart:math';
 
 import 'package:diner_dice/data/repositories/base_repo.dart';
+import 'package:diner_dice/utils/consts.dart';
+import 'package:flutter/foundation.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_place/google_place.dart';
 import 'package:location/location.dart' as loc;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:http/http.dart' as http;
 
 import '../../utils/functions.dart';
 
@@ -12,6 +16,8 @@ class HomeRepo extends BaseRepo {
   List<SearchResult> restaurants = [];
   SearchResult? selectedRestaurant;
   String? nextPageToken;
+  String type = "restaurant";
+  List<SearchResult> _previouslySelectedRestaurants = [];
 
   Future<Position> _getCurrentLocation() async {
     bool serviceEnabled;
@@ -55,24 +61,44 @@ class HomeRepo extends BaseRepo {
 
   Future<List<SearchResult>> _getNearbyRestaurants({String? pageToken}) async {
     final position = await _getCurrentLocation();
-    final googlePlace = GooglePlace(MAPS_API_KEY);
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    Map<String, String> headers = <String, String>{
+      if (defaultTargetPlatform == TargetPlatform.iOS)
+        'x-ios-bundle-identifier': packageInfo.packageName,
+      if (defaultTargetPlatform == TargetPlatform.android) ...{
+        'x-android-package': packageInfo.packageName,
+        'x-android-cert': SHA1_SIGNING_KEY,
+      }
+    };
+    if (kDebugMode) {
+      headers = {};
+    }
+    final googlePlace = GooglePlace(MAPS_API_KEY, headers: headers);
     final result = await googlePlace.search.getNearBySearch(
       Location(
-        lat: position.latitude,
-        lng: position.longitude,
+        lat: 54.5181885,
+        lng: -1.5675516,
       ),
-      1500,
-      type: "restaurant",
+      5000,
+      type: type,
       opennow: true,
       pagetoken: pageToken,
+      rankby: RankBy.Prominence,
     );
+
     if (result == null) {
-      showToast("Failed to process the request, please try again");
+      if (pageToken != null) {
+        //retry the fetch
+        return await _getNearbyRestaurants(pageToken: pageToken);
+      } else {
+        showToast("Failed to process the request, please try again");
+      }
       return [];
     }
     nextPageToken = result.nextPageToken;
 
-    if (result.results == null || result.results?.isEmpty == true) {
+    if ((result.results == null || result.results?.isEmpty == true) &&
+        pageToken == null) {
       showToast("No restaurants found");
       return [];
     }
@@ -81,20 +107,34 @@ class HomeRepo extends BaseRepo {
 
   Future<void> getRestaurants() async {
     selectedRestaurant = null;
-    restaurants = [];
-    nextPageToken = null;
 
-    restaurants = await _getNearbyRestaurants();
+    restaurants.addAll(await _getNearbyRestaurants(pageToken: nextPageToken));
 
     //get random restaurant from list
     if (restaurants.isNotEmpty) {
       final random = Random();
-      final index = random.nextInt(restaurants.length - 1);
-      selectedRestaurant = restaurants[index];
+      List<SearchResult> restaurantsClone = List.from(restaurants);
+      restaurantsClone.removeWhere((res) => _previouslySelectedRestaurants
+          .any((ps) => ps.placeId == res.placeId || ps.name == res.name));
+      if (restaurantsClone.isEmpty) {
+        restaurantsClone.addAll(_previouslySelectedRestaurants);
+      }
+      restaurantsClone.shuffle();
+      final index = random.nextInt(restaurantsClone.length - 1);
+      selectedRestaurant = restaurantsClone[index];
+      _previouslySelectedRestaurants.add(selectedRestaurant!);
     }
   }
 
   Future<void> getMoreRestaurants() async {
-    restaurants.addAll(await _getNearbyRestaurants(pageToken: nextPageToken));
+    if (nextPageToken != null) {
+      restaurants.addAll(await _getNearbyRestaurants(pageToken: nextPageToken));
+    }
+  }
+
+  void clear() {
+    restaurants.clear();
+    nextPageToken = null;
+    selectedRestaurant = null;
   }
 }

@@ -1,4 +1,5 @@
 import 'package:diner_dice/data/repositories/home_repo.dart';
+import 'package:diner_dice/ui/widgets/inputs/select_input.dart';
 import 'package:flutter/material.dart';
 import 'package:google_place/google_place.dart';
 
@@ -34,6 +35,17 @@ class HomeProvider extends ChangeNotifier {
     } catch (e) {}
 
     isLoadingMore = false;
+    notifyListeners();
+  }
+
+  void setType(InputOption? option) {
+    _repo.clear();
+    _repo.type = option?.value ?? "restaurant";
+    notifyListeners();
+  }
+
+  void clear() {
+    _repo.clear();
     notifyListeners();
   }
 }
