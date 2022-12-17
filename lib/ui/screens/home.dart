@@ -36,7 +36,18 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             if (provider.selectedRestaurant != null && !provider.searching)
-              RestaurantPreview(provider.selectedRestaurant!)
+              RestaurantPreview(provider.selectedRestaurant!),
+            if (provider.restaurants.isNotEmpty && !provider.searching)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                alignment: Alignment.center,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamed("restaurants/nearby");
+                  },
+                  child: const Text("try other nearby restaurants"),
+                ),
+              )
           ],
         );
       }),

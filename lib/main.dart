@@ -1,5 +1,6 @@
 import 'package:diner_dice/data/providers/home_provider.dart';
 import 'package:diner_dice/ui/screens/home.dart';
+import 'package:diner_dice/ui/screens/nearby_restaurants.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -21,7 +22,11 @@ class MyApp extends StatelessWidget {
           fontFamily: "McLaren",
           primarySwatch: Colors.blue,
         ),
-        home: const HomeScreen(),
+        initialRoute: "/",
+        routes: {
+          "/": (context) => const HomeScreen(),
+          "restaurants/nearby": (context) => const NearbyRestaurantsScreen(),
+        },
       ),
     );
   }
