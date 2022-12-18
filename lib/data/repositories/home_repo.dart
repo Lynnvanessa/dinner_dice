@@ -1,22 +1,21 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:diner_dice/data/models/alert.dart';
+import 'package:diner_dice/data/models/nearby_place.dart';
 import 'package:diner_dice/data/repositories/base_repo.dart';
-import 'package:diner_dice/utils/consts.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_place/google_place.dart';
 import 'package:location/location.dart' as loc;
-import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../utils/functions.dart';
 
 class HomeRepo extends BaseRepo {
-  List<SearchResult> restaurants = [];
-  SearchResult? suggestedRestaurant;
+  List<NearbyPlace> restaurants = [];
+  NearbyPlace? suggestedRestaurant;
   String? nextPageToken;
   String type = "restaurant";
-  final List<SearchResult> _previouslySuggestedRestaurants = [];
+  final List<NearbyPlace> _previouslySuggestedRestaurants = [];
 
   List<Alert> alerts = [];
 
@@ -33,8 +32,9 @@ class HomeRepo extends BaseRepo {
         //Location services are not enabled
         alerts.add(
           Alert(
-              message: "Location services are not enabled",
-              type: AlertType.error),
+            message: "Location services are not enabled",
+            type: AlertType.error,
+          ),
         );
         return Future.error('Location services are not enabled.');
       }
@@ -51,9 +51,10 @@ class HomeRepo extends BaseRepo {
         // your App should show an explanatory UI now.
         alerts.add(
           Alert(
-              message:
-                  "The app has been denied permission to access location services.",
-              type: AlertType.error),
+            message:
+                "The app has been denied permission to access location services.",
+            type: AlertType.error,
+          ),
         );
         return Future.error('Location permissions are denied');
       }
@@ -63,9 +64,10 @@ class HomeRepo extends BaseRepo {
       // Permissions are denied forever, handle appropriately.
       alerts.add(
         Alert(
-            message:
-                "The app has been denied permission to access location services.",
-            type: AlertType.error),
+          message:
+              "The app has been denied permission to access location services.",
+          type: AlertType.error,
+        ),
       );
       return Future.error(
           'Location permissions are permanently denied, we cannot request permissions.');
@@ -73,66 +75,10 @@ class HomeRepo extends BaseRepo {
     return await Geolocator.getCurrentPosition();
   }
 
-  Future<List<SearchResult>> _getNearbyRestaurants({String? pageToken}) async {
-    final position = await _getCurrentLocation();
-    PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    Map<String, String> headers = <String, String>{
-      if (defaultTargetPlatform == TargetPlatform.iOS)
-        'x-ios-bundle-identifier': packageInfo.packageName,
-      if (defaultTargetPlatform == TargetPlatform.android) ...{
-        'x-android-package': packageInfo.packageName,
-        'x-android-cert': SHA1_SIGNING_KEY,
-      }
-    };
-    if (kDebugMode) {
-      headers = {};
-    }
-    final googlePlace = GooglePlace(MAPS_API_KEY, headers: headers);
-    final result = await googlePlace.search.getNearBySearch(
-      kDebugMode
-          ? Location(
-              lat: 54.5181885,
-              lng: -1.5675516,
-            )
-          : Location(
-              lat: position.latitude,
-              lng: position.longitude,
-            ),
-      5000,
-      type: type,
-      opennow: true,
-      pagetoken: pageToken,
-    );
-
-    if (result == null) {
-      if (pageToken != null) {
-        // was a fetch more request
-        // retry the fetch
-        return await _getNearbyRestaurants(pageToken: pageToken);
-      } else {
-        alerts.add(
-          Alert(
-            message: "Failed to process the request, please try again",
-            type: AlertType.error,
-          ),
-        );
-        return [];
-      }
-    }
-    nextPageToken = result.nextPageToken;
-
-    if (result.results!.isEmpty && pageToken == null) {
-      showToast("No restaurants found");
-      return [];
-    }
-    return result.results ?? [];
-  }
-
   Future<void> getRestaurants() async {
     suggestedRestaurant = null;
 
-    final fetchedRestaurants =
-        await _getNearbyRestaurants(pageToken: nextPageToken);
+    final fetchedRestaurants = await getNearbyPlaces(pageToken: nextPageToken);
     final resultsInitiallyEmpty = fetchedRestaurants.isEmpty;
 
     // remove duplicates
@@ -184,7 +130,7 @@ class HomeRepo extends BaseRepo {
 
   Future<void> getMoreRestaurants() async {
     if (nextPageToken != null) {
-      restaurants.addAll(await _getNearbyRestaurants(pageToken: nextPageToken));
+      restaurants.addAll(await getNearbyPlaces(pageToken: nextPageToken));
     }
   }
 
@@ -193,5 +139,55 @@ class HomeRepo extends BaseRepo {
     restaurants.clear();
     nextPageToken = null;
     suggestedRestaurant = null;
+  }
+
+  Future<List<NearbyPlace>> getNearbyPlaces({String? pageToken}) async {
+    final position = await _getCurrentLocation();
+    String locationStr = "${position.latitude}%2C${position.longitude}";
+    if (kDebugMode) {
+      locationStr = "54.5181885%2C-1.5675516";
+    }
+    String url =
+        "json?location=$locationStr&radius=5000&type=$type&opennow=opennow&key=$MAPS_API_KEY";
+    if (pageToken != null) {
+      url += "&pagetoken=$pageToken";
+    }
+    try {
+      final response = await get(url);
+      if (response.statusCode == 200) {
+        List<NearbyPlace> fetchedRestaurants = [];
+        final data = jsonDecode(response.body);
+        nextPageToken = data["next_page_token"];
+        final results = data["results"] ?? [];
+        for (var res in results) {
+          try {
+            fetchedRestaurants.add(NearbyPlace.fromJson(res));
+          } catch (e) {
+            if (kDebugMode) {
+              print({"tag": "getNearbyPlaces", "error": e});
+            }
+          }
+        }
+        if (fetchedRestaurants.isEmpty && pageToken == null) {
+          showToast("No restaurants found");
+        }
+        return fetchedRestaurants;
+      } else {
+        alerts.add(
+          Alert(
+            message: "Failed to process the request, please try again",
+            type: AlertType.error,
+          ),
+        );
+      }
+    } catch (e) {
+      alerts.add(
+        Alert(
+          message: "Failed to process the request, please try again",
+          type: AlertType.error,
+        ),
+      );
+    }
+    return [];
   }
 }
